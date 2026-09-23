@@ -241,6 +241,7 @@
       <div class="toolbar">
         <button id="startBtn" class="primary" type="button">開始語音</button>
         <button id="stopBtn" type="button" disabled>停止</button>
+        <button id="copyNotesBtn" type="button">複製筆記</button>
         <button id="clearTempBtn" type="button">清除暫存</button>
         <button id="clearNotesBtn" class="danger" type="button">清除筆記</button>
         <select id="language" aria-label="辨識語言">
@@ -263,6 +264,7 @@
       const notes = document.getElementById('notes');
       const startBtn = document.getElementById('startBtn');
       const stopBtn = document.getElementById('stopBtn');
+      const copyNotesBtn = document.getElementById('copyNotesBtn');
       const clearTempBtn = document.getElementById('clearTempBtn');
       const clearNotesBtn = document.getElementById('clearNotesBtn');
       const language = document.getElementById('language');
@@ -314,6 +316,34 @@
 
       stopBtn.addEventListener('click', () => recognition.stop());
 
+      // 複製筆記功能
+      copyNotesBtn.addEventListener('click', async () => {
+        if (!notes.value.trim()) {
+          status.textContent = '筆記內容為空，無需複製！';
+          return;
+        }
+
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(notes.value);
+          } else {
+            // 舊版瀏覽器備用方案
+            notes.select();
+            document.execCommand('copy');
+            notes.blur();
+          }
+          const oldStatus = status.textContent;
+          status.textContent = '📋 已複製到剪貼簿！';
+          setTimeout(() => {
+            if (status.textContent === '📋 已複製到剪貼簿！') {
+              status.textContent = isRecording ? '正在聆聽中……' : '準備就緒';
+            }
+          }, 2000);
+        } catch (err) {
+          status.textContent = '複製失敗，請手動全選複製';
+        }
+      });
+
       clearTempBtn.addEventListener('click', () => { temporary.value = ''; });
 
       clearNotesBtn.addEventListener('click', () => {
@@ -345,9 +375,13 @@
 
         temporary.value = interimText;
 
+        // 當有全新確定的文字時，以換行方式追加
         if (newFinalText) {
-          const needsSpace = notes.value && !/\s$/.test(notes.value) && /^[a-zA-Z0-9]/.test(newFinalText);
-          notes.value += (needsSpace ? ' ' : '') + newFinalText;
+          if (notes.value.length > 0) {
+            // 若筆記區最後沒有換行符號，則補上 \n
+            notes.value += notes.value.endsWith('\n') ? '' : '\n';
+          }
+          notes.value += newFinalText;
           notes.scrollTop = notes.scrollHeight;
         }
       };
